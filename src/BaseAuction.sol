@@ -243,25 +243,25 @@ abstract contract BaseAuction is PriceManager, ITypeAndVersion, Caller, IBaseAuc
 
       // 1) Check for live or ended auctions.
       uint256 auctionStart = s_auctionStarts[asset]; //@audit-info 👉কবে অকশন শুরু হয়েছে তা store করতে।
-      if (auctionStart != 0) {
+      if (auctionStart != 0) {//@audit-info → মানে: এই asset এর auction আগে থেকেই শুরু হয়ে গেছে।
         uint256 assetBalance = IERC20(asset).balanceOf(address(this));  //@audit-info assetBalance ,,contract এ থাকা USDC , assetBalance =100 USDC 
         uint256 assetBalanceUsdValue = (assetBalance * assetPrice) / (10 ** assetParams.decimals);//@audit-info “এই লাইনে contract এ থাকা token এর মোট value USD-এ convert করা হচ্ছে”  ,, $100 (18 decimals format)
         if (
           auctionStart + assetParams.auctionDuration < block.timestamp  //@audit-info Auction start = 10:00 AM ,,Duration = 1 hour ,, Now = 11:10 AM ,,➡️ 11:00 এর পরে → auction শেষ ❌
             || (isPriceValid && assetBalanceUsdValue < assetParams.minAuctionSizeUsd)  //? @audit-info  price ঠিক আছে (not stale, not zero) ,,auction-এ এখন যত asset বাকি আছে → সেটা minimum requirement এর নিচে
         ) {
-          endedAuctions[endedAuctionsIdx++] = asset;
+          endedAuctions[endedAuctionsIdx++] = asset;  //@audit-info endedAuctions[idx] = asset; ,,idx = idx + 1; ,, current index এ store করো, তারপর index +1 করো”
         }
       } else if (isPriceValid) {
         // 2) Get the current asset value in USD available for auction.
-        uint256 availableBalance = IERC20(asset).balanceOf(feeAggregator);
-        uint256 availableAssetUsdValue = (availableBalance * assetPrice) / (10 ** assetParams.decimals);
+        uint256 availableBalance = IERC20(asset).balanceOf(feeAggregator);//@audit-info availableBalance = 1000
+        uint256 availableAssetUsdValue = (availableBalance * assetPrice) / (10 ** assetParams.decimals);  //@audit-info এখানে convert হচ্ছে → USD value ,, 1000 × $1 = $1000
 
         // 3) Auction asset if the asset's current USD balance is above the minimum auction size.
-        if (availableAssetUsdValue >= assetParams.minAuctionSizeUsd) {
+        if (availableAssetUsdValue >= assetParams.minAuctionSizeUsd) {  //@audit-info $1000 ≥ $100 ✅
           // We only pass in the fee aggregator balance as the amount since its sole purpose is to pull funds from the
           // fee aggregator.
-          eligibleAssets[eligibleAssetsIdx++] = Common.AssetAmount({asset: asset, amount: availableBalance});
+          eligibleAssets[eligibleAssetsIdx++] = Common.AssetAmount({asset: asset, amount: availableBalance});  //@audit-info eligibleAssets[0] = {asset: USDC, amount: 1000} ,, eligibleAssetsIdx = 1
         }
       }
     }
@@ -269,12 +269,12 @@ abstract contract BaseAuction is PriceManager, ITypeAndVersion, Caller, IBaseAuc
     // If the asset out price is not valid, we s`hould not start any auctions even if there are eligible assets as bids
     // would revert.
     if (!isAssetOutPriceValid) {
-      eligibleAssetsIdx = 0;
+      eligibleAssetsIdx = 0;  //@audit-info eligibleAssets = [{USDC, 1000}] ,, LINK price = INVALID ❌ ,, eligibleAssetsIdx = 0  ,, → eligibleAssets = empty
     }
     if (eligibleAssetsIdx < auctions.length) {
-      assembly {
+      assembly {  //@audit-info “Solidity bypass করে সরাসরি EVM (low-level) code লেখা”
         // update eligibleassets length.
-        mstore(eligibleAssets, eligibleAssetsIdx)
+        mstore(eligibleAssets, eligibleAssetsIdx)  //@audit-info “যতজন আসলে আছে, array-কে তত বড় দেখাও”
       }
     }
     if (endedAuctionsIdx < auctions.length) {
