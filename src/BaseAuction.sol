@@ -306,26 +306,26 @@ abstract contract BaseAuction is PriceManager, ITypeAndVersion, Caller, IBaseAuc
   /// @dev precondition - Eligible assets amounts USD values must be above the minimum auction size.
   /// @dev precondition - Ended auctions must not be the asset out.
   function performUpkeep(//@audit-info execution engine 🔥
-    bytes calldata performData
+    bytes calldata performData 
   ) external whenNotPaused whenAssetOutConfigured onlyRole(Roles.AUCTION_WORKER_ROLE) {
     (Common.AssetAmount[] memory eligibleAssets, address[] memory endedAuctions) =  //@audit-info checkUpkeep() already decide করে দিয়েছে: ,, eligibleAssets = [USDC: 1000]  ,, endedAuctions = [DAI]
       abi.decode(performData, (Common.AssetAmount[], address[]));  //@audit-info Common.AssetAmount = (USDC, 1000)
 
     // We should never pass a list of eligible assets with a non valid asset out price.
-    uint256 assetOutPrice;
-    address assetOut = s_assetOut;
-    if (eligibleAssets.length > 0) {
-      (assetOutPrice,,) = _getAssetPrice(assetOut, true);
+    uint256 assetOutPrice;  //@audit-info এখানে শুধু variable declare করা হয়েছে  ,,assetOutPrice = empty
+    address assetOut = s_assetOut; //link 
+    if (eligibleAssets.length > 0) { 
+      (assetOutPrice,,) = _getAssetPrice(assetOut, true);//@audit-info “assetOut এর validated (safe) price নিয়ে আসো — invalid হলে revert করো” --valid price= true
     }
 
-    bool hasFeeAggregator = address(s_feeAggregator) != address(this);
+    bool hasFeeAggregator = address(s_feeAggregator) != address(this);  //@audit-info hasFeeAggregator = true
 
     if (hasFeeAggregator && eligibleAssets.length > 0) {
-      s_feeAggregator.transferForSwap(address(this), eligibleAssets);
+      s_feeAggregator.transferForSwap(address(this), eligibleAssets);  //@audit-info Auction Contract → FeeAggregator call করছে --to = address(this)--assetAmounts = eligibleAssets
     }
 
     for (uint256 i; i < eligibleAssets.length; ++i) {
-      address asset = eligibleAssets[i].asset;
+      address asset = eligibleAssets[i].asset;  //@audit-info eligibleAssets[0].asset → USDC --eligibleAssets[1].asset → DAI
 
       if (s_auctionStarts[asset] != 0) {
         revert LiveAuction();

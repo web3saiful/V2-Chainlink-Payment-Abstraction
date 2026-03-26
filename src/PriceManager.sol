@@ -372,7 +372,7 @@ abstract contract PriceManager is LinkReceiver, EmergencyWithdrawer, IPriceManag
   function _getAssetPrice(  //@audit-info এই asset-এর latest USD price খুঁজে বের করো (safe কিনা check করে)”
     address asset,
     bool withValidation
-  ) internal view virtual returns (uint256 price, uint256 updatedAt, bool isValid) {
+  ) internal view virtual returns (uint256 price, uint256 updatedAt, bool isValid) {  //@audit-info price → asset এর USD price  ,,updatedAt → price কখন update হয়েছে  ,, isValid → price valid কিনা
     DataStreamsPriceInfo memory priceInfo = s_dataStreamsPrice[asset];
     FeedInfo memory feedInfo = s_feedInfo[asset];
     uint256 minTimestamp = block.timestamp - feedInfo.stalenessThreshold;
